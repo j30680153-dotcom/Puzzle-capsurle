@@ -607,7 +607,81 @@ function storageLabel(){
 function ensureMission(){
   const t=todayKey();
   if(S.mission.date!==t){
-    S.mission={date:t,progress:{lines:0,places:0,score:0},/* ==================== PART 6: ゲーム進行ロジック ==================== */
+    S.mission={date:t,progress:{lines:0,places:0,score:0},claimed:{lines:false,places:false,score:false}};
+    saveData();
+  }
+}
+
+/* プレイ中データの検証・保存・復元 */
+function validateGame(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  if(MODE_IDS.indexOf(raw.mode)<0)return null;
+  if(!Array.isArray(raw.board)||raw.board.length!==SIZE)return null;
+  const board=emptyBoard();
+  for(let r=0;r<SIZE;r++){
+    const row=raw.board[r];
+    if(!Array.isArray(row)||row.length!==SIZE)return null;
+    for(let c=0;c<SIZE;c++){
+      if(row[c]!==0&&row[c]!==1)return null;
+      board[r][c]=row[c];
+    }
+  }
+  if(!Array.isArray(raw.pieces)||raw.pieces.length!==3)return null;
+  const pieces=[];
+  for(const p of raw.pieces){
+    if(!p||!SHAPE_MAP[p.sid]||typeof p.used!=='boolean')return null;
+    pieces.push({sid:p.sid,used:p.used});
+  }
+  const skills=[];
+  if(Array.isArray(raw.skills)){
+    raw.skills.forEach(id=>{
+      if(SKILL_MAP[id]&&skills.indexOf(id)<0&&skills.length<MAX_DECK)skills.push(id);
+    });
+  }
+  return {
+    mode:raw.mode,board:board,pieces:pieces,skills:skills,
+    score:safeInt(raw.score,0,99999999,0),
+    combo:safeInt(raw.combo,0,999,0),
+    turn:safeInt(raw.turn,0,99999,0),
+    charge:safeInt(raw.charge,0,MAX_CHARGE,0),
+    seed:safeInt(raw.seed,0,4294967295,0),
+    gen:safeInt(raw.gen,0,99999,0),
+    lines:safeInt(raw.lines,0,99999,0),
+    places:safeInt(raw.places,0,99999,0),
+    day:isDateStr(raw.day)?raw.day:todayKey()
+  };
+}
+function saveGame(){
+  if(!G)return false;
+  return lsSet(GAME_KEY,JSON.stringify({ver:1,data:G}));
+}
+function clearGame(){
+  G=null;
+  lsRemove(GAME_KEY);
+}
+function loadGame(){
+  const txt=lsGet(GAME_KEY);
+  if(txt===null)return null;
+  try{
+    const p=JSON.parse(txt);
+    if(!p||p.ver!==1)throw new Error('bad');
+    const g=validateGame(p.data);
+    if(!g)throw new Error('bad');
+    return g;
+  }catch(e){
+    lsRemove(GAME_KEY);
+    return null;
+  }
+}
+function resetAllData(){
+  lsRemove(SAVE_KEY);
+  lsRemove(SAVE_KEY+'.corrupt');
+  lsRemove(GAME_KEY);
+  S=defaultSave();
+  G=null;
+  saveData();
+}
+/* ==== PART 5 END（次はPART 6：ゲーム進行ロジック＝開始・配置・消去・スコア・コンボ・チャージ・ゲームオーバー判定を直後に結合） ==== *//* ==================== PART 6: ゲーム進行ロジック ==================== */
 let gameOver=false;
 let lastSummary=null;
 
