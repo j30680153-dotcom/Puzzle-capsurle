@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>PUZZLE CAPSULE</title>
+<style>
+:root{
+  --bg:#ffffff;--fg:#111111;--sub:#777b84;--line:#e3e5e8;--panel:#f6f7f9;
+  --accent:#2563eb;--accent-soft:#dbe7ff;--danger:#dc2626;--ok:#16a34a;
+  --n:#6b7280;--r:#16a34a;--sr:#9333ea;--ssr:#f59e0b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+  overflow:hidden;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;
+}
+#app{position:relative;max-width:480px;height:100dvh;margin:0 auto;overflow:hidden}
+.screen{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+  overflow-y:auto;overflow-x:hidden;
+}
+.screen.active{display:flex}
+h2{margin:0;font-size:20px;letter-spacing:.08em}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
+.coin{
+  font-weight:700;font-size:15px;padding:6px 12px;
+  border:1px solid var(--line);border-radius:20px;background:var(--panel);
+}
+.sub{color:var(--sub);font-size:13px;line-height:1.5}
+.btn{
+  min-height:48px;padding:0 16px;border:1.5px solid var(--fg);border-radius:12px;
+  background:#fff;color:var(--fg);font-size:15px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.small{min-height:40px;font-size:13px;padding:0 12px}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn{flex:1}
+.stack{display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+
+/* ---------- HOME ---------- */
+#home{justify-content:center;gap:16px;text-align:center}
+.logo{font-size:38px;font-weight:900;letter-spacing:.1em;line-height:1.1}
+.logo span{color:var(--accent)}
+.stats{display:flex;gap:10px}
+.stat{
+  flex:1;padding:12px;border:1px solid var(--line);
+  border-radius:14px;background:var(--panel);font-size:12px;color:var(--sub);
+}
+.stat b{display:block;font-size:22px;margin-top:2px;color:var(--fg)}
+.mode-tabs{display:flex;gap:6px}
+.mode-tab{
+  flex:1;min-height:44px;border:1.5px solid var(--line);border-radius:10px;
+  background:#fff;font-weight:700;font-size:13px;font-family:inherit;color:var(--sub);
+}
+.mode-tab.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.mode-desc{min-height:40px;font-size:13px;color:var(--sub);line-height:1.5}
+.mission{text-align:left;font-size:13px}
+.mission .row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.mission .row:last-child{border-bottom:none}
+.mission .done{color:var(--ok);font-weight:700}
+
+/* ---------- PUZZLE ---------- */
+#puzzle{padding-top:10px;gap:8px}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.hud div{
+  background:var(--panel);border-radius:10px;padding:6px 4px;
+  text-align:center;font-size:11px;color:var(--sub);
+}
+.hud b{display:block;font-size:17px;color:var(--fg)}
+.hud b.pop{animation:pop .3s}
+@keyframes pop{50%{transform:scale(1.25);color:var(--accent)}}
+.charge{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub)}
+.bar{flex:1;height:12px;border-radius:6px;background:var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);transition:width .25s}
+#board{
+  display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);gap:2px;
+  width:min(100%,max(260px,calc(100dvh - 420px)));aspect-ratio:1/1;
+  margin:0 auto;padding:2px;background:#cfd3d9;border-radius:10px;touch-action:none;
+}
+.cell{background:#fff;border-radius:3px;transition:background .12s}
+.cell.alt{background:#f1f2f4}
+.cell.filled{background:var(--accent)}
+.cell.hint{background-image:radial-gradient(circle,#a9c2f7 30%,transparent 34%)}
+.cell.pv-ok{background:#93b4f8}
+.cell.pv-bad{background:#fca5a5}
+.cell.pv-clear{background:#3b82f6;outline:2px solid #1d4ed8;outline-offset:-2px}
+.cell.tgt{background:#fde68a;outline:2px solid var(--ssr);outline-offset:-2px}
+.cell.clearing{animation:clr .35s forwards}
+@keyframes clr{to{transform:scale(.2);opacity:0}}
+#tray{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{
+  height:88px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+  display:flex;align-items:center;justify-content:center;touch-action:none;position:relative;
+}
+.slot.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent) inset}
+.slot.used{opacity:.15;pointer-events:none}
+.mini{display:grid;gap:2px}
+.mini i{display:block;width:var(--s);height:var(--s);border-radius:2px;background:transparent}
+.mini i.on{background:var(--fg)}
+#skillBar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.skill-btn{
+  min-height:58px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+  font-family:inherit;padding:4px;font-size:11px;font-weight:700;color:var(--fg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+}
+.skill-btn small{font-weight:400;color:var(--sub);font-size:10px}
+.skill-btn.ready{border-color:var(--accent);background:var(--accent-soft)}
+.skill-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.skill-btn.active small{color:#fff}
+.skill-btn.empty{opacity:.4}
+.skill-btn:disabled{opacity:.4}
+/* ==== PART 1 END（次はPART 2のCSS続きを直後に結合） ==== */#ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:90;display:none;opacity:.85}
+#ghost .mini i.on{background:var(--accent)}
+.hidden{display:none!important}
+.rar-N{--rc:var(--n)}.rar-R{--rc:var(--r)}.rar-SR{--rc:var(--sr)}.rar-SSR{--rc:var(--ssr)}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--rc);color:#fff;font-size:11px;font-weight:800}
+
+/* ---------- GACHA / COLLECTION / DECK / SETTINGS ---------- */
+.rate{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:14px}
+#gachaStage{display:flex;justify-content:center;align-items:center;padding:22px 0}
+.capsule{width:96px;height:96px;border-radius:50%;border:3px solid var(--fg);background:linear-gradient(#2563eb 50%,#fff 50%)}
+.capsule.shake{animation:shake .5s ease-in-out 2}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+.capsule.burst{animation:burst .5s forwards}
+@keyframes burst{to{transform:scale(1.8);opacity:0}}
+.skill-card{
+  border:1.5px solid var(--line);border-left:6px solid var(--rc);border-radius:12px;
+  padding:12px;display:flex;flex-direction:column;gap:6px;background:#fff;
+}
+.skill-card.locked{opacity:.45;background:var(--panel)}
+.skill-card .head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px}
+.skill-card .desc{font-size:13px;color:var(--sub);line-height:1.5}
+.skill-card .meta{display:flex;justify-content:space-between;font-size:12px;color:var(--sub)}
+.skill-card.equipped{box-shadow:0 0 0 2px var(--accent) inset}
+.deck-slot{
+  min-height:64px;border:1.5px dashed #b8bcc4;border-radius:12px;padding:10px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;
+}
+.deck-slot.filled{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+.setting-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:14px}
+
+/* ---------- OVERLAY / MODAL / TOAST ---------- */
+.overlay{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  z-index:100;padding:16px;background:rgba(255,255,255,.94);
+}
+.overlay.show{display:flex}
+#modal{background:rgba(0,0,0,.45);z-index:110}
+#fx{z-index:120;flex-direction:column;gap:18px;background:#fff;font-weight:800;letter-spacing:.1em}
+#fx.rar-SSR{background:#fff4d6}
+#fx.rar-SR{background:#f1e6ff}
+.dialog{
+  width:100%;max-width:420px;max-height:88dvh;overflow-y:auto;background:#fff;
+  border:1.5px solid var(--fg);border-radius:16px;padding:18px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.dialog h3{margin:0;font-size:18px}
+.dialog .body{font-size:14px;line-height:1.6;color:#333}
+.res-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.res-item{border:1.5px solid var(--rc);border-radius:10px;padding:8px;font-size:12px;line-height:1.5;background:#fff}
+.res-item b{display:block;font-size:13px}
+.res-item.dup{background:var(--panel)}
+#toast{
+  position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);background:var(--fg);color:#fff;padding:10px 16px;
+  border-radius:20px;font-size:13px;opacity:0;pointer-events:none;
+  transition:opacity .2s;z-index:200;max-width:90%;text-align:center;
+}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ========== HOME ========== -->
+<section id="home" class="screen active">
+  <div class="logo">PUZZLE<br><span>CAPSULE</span></div>
+  <div class="stats">
+    <div class="stat">所持コイン<b id="homeCoin">0</b></div>
+    <div class="stat">最高スコア<b id="homeBest">0</b></div>
+  </div>
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" data-mode="CLASSIC">CLASSIC</button>
+    <button class="mode-tab" data-mode="CHALLENGE">CHALLENGE</button>
+    <button class="mode-tab" data-mode="DAILY">DAILY</button>
+  </div>
+  <div class="mode-desc" id="modeDesc"></div>
+  <div class="stack">
+    <button class="btn primary" id="btnPlay">プレイ開始</button>
+    <button class="btn" id="btnNewGame" hidden>中断データを破棄して新規開始</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" data-go="gacha">ガチャ</button>
+    <button class="btn" data-go="collection">コレクション</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" data-go="deck">デッキ編成</button>
+    <button class="btn" data-go="settings">設定</button>
+  </div>
+  <div class="card mission" id="missionBox"></div>
+</section>
+
+<!-- ========== PUZZLE ========== -->
+<section id="puzzle" class="screen">
+  <div class="topbar" style="margin-bottom:0">
+    <div>
+      <div class="sub" id="modeLabel" style="font-weight:800;color:var(--fg)">CLASSIC</div>
+      <div class="sub" id="goalLabel"></div>
+    </div>
+    <div class="btn-row" style="flex:none">
+      <button class="btn small" id="btnPause">一時停止</button>
+      <button class="btn small danger" id="btnQuit">終了</button>
+    </div>
+  </div>
+  <div class="hud">
+    <div>SCORE<b id="hudScore">0</b></div>
+    <div>BEST<b id="hudBest">0</b></div>
+    <div>COMBO<b id="hudCombo">0</b></div>
+    <div>TURN<b id="hudTurn">0</b></div>
+  </div>
+  <div class="charge">CHARGE
+    <div class="bar"><i id="chargeFill"></i></div>
+    <span id="chargeText">0/100</span>
+  </div>
+  <div id="board"></div>
+  <div id="tray"></div>
+  <div id="skillBar"></div>
+</section>
+<div id="ghost"></div>
+<!-- ==== PART 2 END（次はPART 3：残りのHTMLとscript開始を直後に結合） ==== --><!-- ========== GACHA ========== -->
+<section id="gacha" class="screen">
+  <div class="topbar">
+    <button class="btn small" data-go="home">戻る</button>
+    <h2>GACHA</h2>
+    <div class="coin" id="gachaCoin">0</div>
+  </div>
+  <div id="gachaStage"><div class="capsule" id="capsule"></div></div>
+  <div class="card" id="rateList"></div>
+  <div class="stack" style="margin-top:12px">
+    <button class="btn primary" id="btnGacha1">1回ガチャ（100コイン）</button>
+    <button class="btn" id="btnGacha10">10連ガチャ（1,000コイン）</button>
+  </div>
+  <div class="sub" id="gachaMsg" style="margin-top:8px;text-align:center"></div>
+</section>
+
+<!-- ========== COLLECTION ========== -->
+<section id="collection" class="screen">
+  <div class="topbar">
+    <button class="btn small" data-go="home">戻る</button>
+    <h2>COLLECTION</h2>
+    <div class="coin" id="colCount">0/4</div>
+  </div>
+  <div class="stack" id="collectionList"></div>
+</section>
+
+<!-- ========== DECK ========== -->
+<section id="deck" class="screen">
+  <div class="topbar">
+    <button class="btn small" data-go="home">戻る</button>
+    <h2>DECK</h2>
+    <div class="coin" id="deckCount">0/3</div>
+  </div>
+  <div class="sub" style="margin-bottom:8px">最大3種類まで編成できます。ゲーム開始後は変更できません。</div>
+  <div class="stack" id="deckSlots"></div>
+  <h2 style="font-size:15px;margin:16px 0 8px">所有能力</h2>
+  <div class="stack" id="deckList"></div>
+</section>
+
+<!-- ========== SETTINGS ========== -->
+<section id="settings" class="screen">
+  <div class="topbar">
+    <button class="btn small" data-go="home">戻る</button>
+    <h2>SETTINGS</h2>
+    <span style="width:60px"></span>
+  </div>
+  <div class="card">
+    <div class="setting-row"><span>ゲーム音</span><button class="btn small" id="btnSound">ON</button></div>
+    <div class="setting-row"><span>データ保存状況</span><span class="sub" id="saveStatus"></span></div>
+  </div>
+  <div class="stack" style="margin-top:12px">
+    <button class="btn" id="btnRules">ゲームルールの確認</button>
+    <button class="btn danger" id="btnReset">ゲームデータをリセット</button>
+  </div>
+</section>
+
+<!-- ========== OVERLAYS ========== -->
+<div id="fx" class="overlay"><div class="capsule" id="fxCapsule"></div><div id="fxText"></div></div>
+<div id="modal" class="overlay">
+  <div class="dialog">
+    <h3 id="modalTitle"></h3>
+    <div class="body" id="modalBody"></div>
+    <div class="btn-row" id="modalBtns"></div>
+  </div>
+</div>
+<div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* ==================== PART 3: 定数・マスタ・ユーティリティ ==================== */
+const SAVE_KEY='puzzleCapsule.save.v1';
+const GAME_KEY='puzzleCapsule.game.v1';
+const SIZE=9;
+const INIT_COIN=500;
+const MAX_CHARGE=100;
+const MAX_LEVEL=3;
+const MAX_DECK=3;
+const COST_1=100, COST_10=1000;
+const RARITIES=['N','R','SR','SSR'];
+const RATES=[{r:'N',p:50},{r:'R',p:32},{r:'SR',p:15},{r:'SSR',p:3}];
+const SHARD_DUP={N:5,R:8,SR:12,SSR:20};
+const LEVEL_NEED={1:20,2:40};          // 現在レベル -> 次のレベルに必要な欠片
+const SCORE_CELL=10;                   // 1マス配置
+const SCORE_LINES={1:100,2:250,3:450}; // 同時消去ライン数 -> 得点
+const SCORE_EXTRA_LINE=250;            // 4ライン以上: 450 + (n-3)*250
+const COMBO_STEP=50;                   // コンボ追加点: (combo-1)*50
+const COMBO_CAP=10;                    // コンボ加点の上限段数
+const CHARGE_PLACE_BASE=5;             // 配置時: 5 + マス数*2
+const CHARGE_PER_CELL=2;
+const CHARGE_PER_LINE=15;              // ライン消去時: 本数*15
+const SCORE_REWARDS=[
+  {score:1000,coin:100},
+  {score:5000,coin:200},
+  {score:10000,coin:500}
+];
+
+/* 特殊能力マスタ（cost は Lv1/Lv2/Lv3 の必要チャージ。強化は控えめ） */
+const SKILLS=[
+  {id:'BLOCK_BREAKER',name:'BLOCK BREAKER',rarity:'N',cost:[25,23,21],target:'cell',
+   desc:'指定した1マスのブロックを消去する。'},
+  {id:'RESHUFFLE',name:'RESHUFFLE',rarity:'R',cost:[35,33,31],target:'confirm',
+   desc:'手元に残っている未配置ブロックをすべて交換する。'},
+  {id:'LINE_SHOCK',name:'LINE SHOCK',rarity:'SR',cost:[50,47,44],target:'line',
+   desc:'指定した1行または1列を消去する。'},
+  {id:'FULL_CLEAR',name:'FULL CLEAR',rarity:'SSR',cost:[80,76,72],target:'area',
+   desc:'指定した3×3範囲内のブロックを消去する。'}
+];
+const SKILL_MAP={};
+SKILLS.forEach(s=>{SKILL_MAP[s.id]=s;});
+
+/* ユーティリティ */
+const $=id=>document.getElementById(id);
+const qsa=(sel,root)=>Array.from((root||document).querySelectorAll(sel));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=n=>Number(n).toLocaleString('ja-JP');
+const isInt=v=>typeof v==='number'&&isFinite(v)&&Math.floor(v)===v;
+function todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function skillCost(id,level){
+  const s=SKILL_MAP[id];
+  return s.cost[clamp(level,1,MAX_LEVEL)-1];
+}
+function lineScore(n){
+  if(n<=0)return 0;
+  if(n<=3)return SCORE_LINES[n];
+  return SCORE_LINES[3]+(n-3)*SCORE_EXTRA_LINE;
+}
+function comboBonus(combo){
+  return combo>=2?Math.min(combo-1,COMBO_CAP)*COMBO_STEP:0;
+}
+/* ==== PART 3 END（次はPART 4：モード定義・ミッション定義・ブロック形状・乱数・セーブ/ロードを直後に結合） ==== *//* ==================== PART 4: モード・ミッション・形状・抽選 ==================== */
+const MODE_IDS=['CLASSIC','CHALLENGE','DAILY'];
+const MODES={
+  CLASSIC:{turns:0,target:0,reward:0,
+    desc:'制限なし。ハイスコアに挑戦します。スコアに応じて初回達成報酬を獲得できます。'},
+  CHALLENGE:{turns:20,target:2500,reward:150,
+    desc:'20ターン以内に2,500点を達成するとクリア。報酬150コイン（1日1回）。'},
+  DAILY:{turns:0,target:2000,reward:200,
+    desc:'毎日同じ初期盤面・同じ出現順。2,000点達成で200コイン（1日1回）。'}
+};
+/* 通常プレイ報酬: 10 + floor(score/250)、上限100 */
+const PLAY_COIN_BASE=10, PLAY_COIN_PER=250, PLAY_COIN_CAP=100;
+const MISSIONS=[
+  {id:'lines', label:'5ライン消去',     goal:5,    coin:50},
+  {id:'places',label:'10回ブロック配置',goal:10,   coin:30},
+  {id:'score', label:'3,000点獲得',     goal:3000, coin:100}
+];
+
+/* ブロック形状 [id, cells[[row,col]...], 出現重み]  ※回転なし */
+const SHAPE_DEFS=[
+ ['s1',[[0,0]],6],
+ ['h2',[[0,0],[0,1]],8],['v2',[[0,0],[1,0]],8],
+ ['h3',[[0,0],[0,1],[0,2]],8],['v3',[[0,0],[1,0],[2,0]],8],
+ ['h4',[[0,0],[0,1],[0,2],[0,3]],5],['v4',[[0,0],[1,0],[2,0],[3,0]],5],
+ ['h5',[[0,0],[0,1],[0,2],[0,3],[0,4]],3],['v5',[[0,0],[1,0],[2,0],[3,0],[4,0]],3],
+ ['q2',[[0,0],[0,1],[1,0],[1,1]],8],
+ ['q3',[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]],2],
+ ['l3a',[[0,0],[1,0],[1,1]],6],['l3b',[[0,1],[1,0],[1,1]],6],
+ ['l3c',[[0,0],[0,1],[1,0]],6],['l3d',[[0,0],[0,1],[1,1]],6],
+ ['l4a',[[0,0],[1,0],[2,0],[2,1]],5],['l4b',[[0,0],[0,1],[0,2],[1,0]],5],
+ ['l4c',[[0,0],[0,1],[1,1],[2,1]],5],['l4d',[[0,2],[1,0],[1,1],[1,2]],5],
+ ['l5a',[[0,0],[1,0],[2,0],[2,1],[2,2]],2],['l5b',[[0,0],[0,1],[0,2],[1,0],[2,0]],2],
+ ['l5c',[[0,0],[0,1],[0,2],[1,2],[2,2]],2],['l5d',[[0,2],[1,2],[2,0],[2,1],[2,2]],2],
+ ['ta',[[0,0],[0,1],[0,2],[1,1]],5],['tb',[[0,1],[1,0],[1,1],[1,2]],5],
+ ['tc',[[0,0],[1,0],[2,0],[1,1]],5],['td',[[0,1],[1,0],[1,1],[2,1]],5],
+ ['sh',[[0,1],[0,2],[1,0],[1,1]],4],['zh',[[0,0],[0,1],[1,1],[1,2]],4],
+ ['sv',[[0,0],[1,0],[1,1],[2,1]],4],['zv',[[0,1],[1,0],[1,1],[2,0]],4],
+ ['r23',[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]],3],
+ ['r32',[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]],3]
+];
+const SHAPES=SHAPE_DEFS.map(d=>{
+  const cells=d[1];
+  const h=Math.max.apply(null,cells.map(p=>p[0]))+1;
+  const w=Math.max.apply(null,cells.map(p=>p[1]))+1;
+  return {id:d[0],cells:cells,w:w,h:h,size:cells.length,weight:d[2]};
+});
+const SHAPE_MAP={};
+SHAPES.forEach(s=>{SHAPE_MAP[s.id]=s;});
+
+/* 乱数（DAILYはシード固定。seed=0 のときは Math.random） */
+function hashSeed(str){
+  let h=2166136261;
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+  return h>>>0;
+}
+function mulberry32(a){
+  return function(){
+    a|=0;a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function makeRng(seed,idx){
+  return seed?mulberry32((seed^Math.imul(idx+1,0x9E3779B1))>>>0):Math.random;
+}
+
+/* 盤面・配置判定（配置判定はここだけで定義する） */
+function emptyBoard(){
+  return Array.from({length:SIZE},()=>new Array(SIZE).fill(0));
+}
+function canPlaceAt(board,shape,r,c){
+  for(const p of shape.cells){
+    const y=r+p[0],x=c+p[1];
+    if(y<0||y>=SIZE||x<0||x>=SIZE||board[y][x])return false;
+  }
+  return true;
+}
+function canPlaceAnywhere(board,shape){
+  for(let r=0;r<=SIZE-shape.h;r++){
+    for(let c=0;c<=SIZE-shape.w;c++){
+      if(canPlaceAt(board,shape,r,c))return true;
+    }
+  }
+  return false;
+}
+
+/* DAILY用の固定初期盤面（10マス。行・列が偏らないようにする） */
+function dailyInitialBoard(seed){
+  const b=emptyBoard(),rng=mulberry32(seed);
+  let n=0;
+  while(n<10){
+    const r=Math.floor(rng()*SIZE),c=Math.floor(rng()*SIZE);
+    if(b[r][c])continue;
+    let rc=0,cc=0;
+    for(let i=0;i<SIZE;i++){rc+=b[r][i];cc+=b[i][c];}
+    if(rc>=3||cc>=3)continue;
+    b[r][c]=1;n++;
+  }
+  return b;
+}
+
+/* ブロック抽選：大型の偏りを防ぎ、最低1個は置けることを保証する */
+const MAX_TOTAL_SIZE=14, MAX_BIG=1, BIG_SIZE=6, EARLY_TURNS=6;
+function pickShape(rng,turn){
+  const ws=SHAPES.map(s=>{
+    let w=s.weight;
+    if(turn<EARLY_TURNS&&s.size>=BIG_SIZE)w*=0.3;
+    return w;
+  });
+  let total=0;
+  ws.forEach(w=>{total+=w;});
+  let t=rng()*total;
+  for(let i=0;i<SHAPES.length;i++){
+    t-=ws[i];
+    if(t<=0)return SHAPES[i];
+  }
+  return SHAPES[0];
+}
+function generatePieces(board,turn,rng){
+  for(let k=0;k<40;k++){
+    const set=[pickShape(rng,turn),pickShape(rng,turn),pickShape(rng,turn)];
+    const total=set.reduce((a,s)=>a+s.size,0);
+    const big=set.filter(s=>s.size>=BIG_SIZE).length;
+    if(total>MAX_TOTAL_SIZE||big>MAX_BIG)continue;
+    if(!set.some(s=>canPlaceAnywhere(board,s)))continue;
+    return set.map(s=>({sid:s.id,used:false}));
+  }
+  /* フォールバック：置ける小型ブロックを優先 */
+  const small=SHAPES.filter(s=>s.size<=3);
+  const fit=small.filter(s=>canPlaceAnywhere(board,s));
+  const pool=fit.length?fit:small;
+  return [0,1,2].map(()=>({sid:pool[Math.floor(rng()*pool.length)].id,used:false}));
+}
+/* ==== PART 4 END（次はPART 5：セーブデータの検証・保存・復元を直後に結合） ==== *//* ==================== PART 5: セーブ/ロード ==================== */
+/* S = 永続データ { coin, owned{id:true}, shards{id:n}, levels{id:1-3}, deck[], best, settings{sound},
+                    mission{date,progress{},claimed{}}, rewards{"1000":true..}, modeClaim{CHALLENGE,DAILY}, mode }
+   G = プレイ中データ { mode, board[9][9]=0/1, pieces[{sid,used}], skills[], score, combo, turn,
+                        charge, seed, gen, lines, places, day } */
+let S=null;
+let G=null;
+let storageState='ok'; // ok | error | recovered
+
+function safeInt(v,min,max,def){return isInt(v)?clamp(v,min,max):def;}
+function lsGet(key){
+  try{return localStorage.getItem(key);}catch(e){storageState='error';return null;}
+}
+function lsSet(key,val){
+  try{localStorage.setItem(key,val);return true;}catch(e){storageState='error';return false;}
+}
+function lsRemove(key){
+  try{localStorage.removeItem(key);}catch(e){}
+}
+function isDateStr(v){return typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);}
+
+function defaultSave(){
+  return {
+    coin:INIT_COIN,
+    owned:{},shards:{},levels:{},
+    deck:[],best:0,
+    settings:{sound:true},
+    mission:{date:todayKey(),progress:{lines:0,places:0,score:0},claimed:{lines:false,places:false,score:false}},
+    rewards:{},
+    modeClaim:{CHALLENGE:'',DAILY:''},
+    mode:'CLASSIC'
+  };
+}
+
+/* 不正な値を検証し、安全な形に正規化して返す */
+function sanitizeSave(raw){
+  const o=defaultSave();
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return o;
+  o.coin=safeInt(raw.coin,0,99999999,INIT_COIN);
+  o.best=safeInt(raw.best,0,99999999,0);
+  const ro=(raw.owned&&typeof raw.owned==='object')?raw.owned:{};
+  const rl=(raw.levels&&typeof raw.levels==='object')?raw.levels:{};
+  const rs=(raw.shards&&typeof raw.shards==='object')?raw.shards:{};
+  SKILLS.forEach(sk=>{
+    if(ro[sk.id]===true){
+      o.owned[sk.id]=true;
+      o.levels[sk.id]=safeInt(rl[sk.id],1,MAX_LEVEL,1);
+      o.shards[sk.id]=safeInt(rs[sk.id],0,99999,0);
+    }
+  });
+  if(Array.isArray(raw.deck)){
+    raw.deck.forEach(id=>{
+      if(typeof id==='string'&&o.owned[id]&&o.deck.indexOf(id)<0&&o.deck.length<MAX_DECK)o.deck.push(id);
+    });
+  }
+  if(raw.settings&&typeof raw.settings.sound==='boolean')o.settings.sound=raw.settings.sound;
+  const m=raw.mission;
+  if(m&&typeof m==='object'&&isDateStr(m.date)){
+    o.mission.date=m.date;
+    MISSIONS.forEach(ms=>{
+      o.mission.progress[ms.id]=safeInt(m.progress&&m.progress[ms.id],0,9999999,0);
+      o.mission.claimed[ms.id]=!!(m.claimed&&m.claimed[ms.id]===true);
+    });
+  }
+  if(raw.rewards&&typeof raw.rewards==='object'){
+    SCORE_REWARDS.forEach(r=>{if(raw.rewards[r.score]===true)o.rewards[r.score]=true;});
+  }
+  ['CHALLENGE','DAILY'].forEach(k=>{
+    const v=raw.modeClaim&&raw.modeClaim[k];
+    o.modeClaim[k]=isDateStr(v)?v:'';
+  });
+  if(MODE_IDS.indexOf(raw.mode)>=0)o.mode=raw.mode;
+  return o;
+}
+
+function loadSave(){
+  const txt=lsGet(SAVE_KEY);
+  if(txt===null){S=defaultSave();return;}
+  try{
+    const p=JSON.parse(txt);
+    if(!p||p.ver!==1||!p.data||typeof p.data!=='object')throw new Error('bad');
+    S=sanitizeSave(p.data);
+  }catch(e){
+    lsSet(SAVE_KEY+'.corrupt',txt); // 壊れたデータは退避してから初期化
+    S=defaultSave();
+    if(storageState!=='error')storageState='recovered';
+  }
+}
+function saveData(){
+  const ok=lsSet(SAVE_KEY,JSON.stringify({ver:1,data:S}));
+  if(ok&&storageState==='error')storageState='ok';
+  return ok;
+}
+function storageLabel(){
+  if(storageState==='error')return '保存できません（ブラウザ設定を確認）';
+  if(storageState==='recovered')return '破損データを検出し初期化しました';
+  return '保存済み（自動保存）';
+}
+
+/* デイリーミッション：日付が変わったら更新 */
+function ensureMission(){
+  const t=todayKey();
+  if(S.mission.date!==t){
+    S.mission={date:t,progress:{lines:0,places:0,score:0},/* ==================== PART 6: ゲーム進行ロジック ==================== */
+let gameOver=false;
+let lastSummary=null;
+
+/* スコア・チャージは必ずこの2関数だけで加算する（二重加算防止） */
+function addScore(pts){
+  if(!G||!isInt(pts)||pts<=0)return;
+  G.score+=pts;
+  bumpMission('score',pts);
+}
+function addCharge(n){
+  if(!G||!isInt(n)||n<=0)return;
+  G.charge=clamp(G.charge+n,0,MAX_CHARGE);
+}
+function bumpMission(id,n){
+  ensureMission();
+  const m=S.mission;
+  m.progress[id]=Math.min(9999999,(m.progress[id]||0)+n);
+  const def=MISSIONS.find(x=>x.id===id);
+  if(def&&!m.claimed[id]&&m.progress[id]>=def.goal){
+    m.claimed[id]=true;
+    S.coin+=def.coin;
+    showToast('ミッション達成！ '+def.label+'  +'+def.coin+'コイン');
+  }
+}
+
+/* 完成ライン検出（消去前の盤面で判定するので行・列の同時消去に対応） */
+function findFullLines(board){
+  const rows=[],cols=[];
+  for(let i=0;i<SIZE;i++){
+    let rf=true,cf=true;
+    for(let k=0;k<SIZE;k++){
+      if(!board[i][k])rf=false;
+      if(!board[k][i])cf=false;
+    }
+    if(rf)rows.push(i);
+    if(cf)cols.push(i);
+  }
+  return {rows:rows,cols:cols};
+}
+function collectCells(full){
+  const set=new Set();
+  full.rows.forEach(r=>{for(let c=0;c<SIZE;c++)set.add(r*SIZE+c);});
+  full.cols.forEach(c=>{for(let r=0;r<SIZE;r++)set.add(r*SIZE+c);});
+  return Array.from(set).map(k=>[Math.floor(k/SIZE),k%SIZE]);
+}
+function isStuck(){
+  return !G.pieces.some(p=>!p.used&&canPlaceAnywhere(G.board,SHAPE_MAP[p.sid]));
+}
+function refillIfNeeded(){
+  if(G.pieces.every(p=>p.used)){
+    G.pieces=generatePieces(G.board,G.turn,makeRng(G.seed,G.gen));
+    G.gen++;
+  }
+}
+function judgeEnd(){
+  const def=MODES[G.mode];
+  if(G.mode==='CHALLENGE'){
+    if(G.score>=def.target)return 'clear';
+    if(G.turn>=def.turns)return 'fail';
+  }
+  return isStuck()?'over':null;
+}
+
+/* 報酬計算とゲーム終了処理 */
+function calcPlayCoin(score){
+  if(score<=0)return 0;
+  return Math.min(PLAY_COIN_CAP,PLAY_COIN_BASE+Math.floor(score/PLAY_COIN_PER));
+}
+function finishGame(result){
+  if(!G||gameOver)return null;
+  gameOver=true;
+  lsRemove(GAME_KEY);
+  const sc=G.score,today=todayKey(),def=MODES[G.mode];
+  const sum={result:result,mode:G.mode,score:sc,turn:G.turn,lines:G.lines,
+    newBest:false,playCoin:0,firstRewards:[],modeReward:0};
+  if(sc>S.best){S.best=sc;sum.newBest=true;}
+  sum.playCoin=calcPlayCoin(sc);
+  S.coin+=sum.playCoin;
+  SCORE_REWARDS.forEach(r=>{
+    if(sc>=r.score&&!S.rewards[r.score]){
+      S.rewards[r.score]=true;
+      S.coin+=r.coin;
+      sum.firstRewards.push(r);
+    }
+  });
+  if(G.day===today){
+    if(G.mode==='CHALLENGE'&&result==='clear'&&S.modeClaim.CHALLENGE!==today){
+      S.modeClaim.CHALLENGE=today;sum.modeReward=def.reward;
+    }
+    if(G.mode==='DAILY'&&sc>=def.target&&S.modeClaim.DAILY!==today){
+      S.modeClaim.DAILY=today;sum.modeReward=def.reward;
+    }
+    S.coin+=sum.modeReward;
+  }
+  saveData();
+  lastSummary=sum;
+  return sum;
+}
+function quitGame(){
+  if(!G||gameOver)return null;
+  return finishGame('quit');
+}
+
+/* ゲーム開始・再開 */
+function startGame(mode){
+  if(MODE_IDS.indexOf(mode)<0)mode='CLASSIC';
+  ensureMission();
+  const seed=mode==='DAILY'?(hashSeed('PUZZLE-CAPSULE-'+todayKey())||1):0;
+  const board=mode==='DAILY'?dailyInitialBoard(seed):emptyBoard();
+  G={mode:mode,board:board,pieces:[],
+    skills:S.deck.filter(id=>S.owned[id]&&SKILL_MAP[id]),
+    score:0,combo:0,turn:0,charge:0,seed:seed,gen:0,lines:0,places:0,day:todayKey()};
+  G.pieces=generatePieces(G.board,0,makeRng(seed,0));
+  G.gen=1;
+  gameOver=false;lastSummary=null;
+  S.mode=mode;
+  saveData();saveGame();
+  resetUiState();
+  showScreen('puzzle');
+  renderPuzzle();
+}
+function resumeGame(){
+  const g=loadGame();
+  if(!g)return false;
+  G=g;gameOver=false;lastSummary=null;
+  refillIfNeeded();
+  resetUiState();
+  showScreen('puzzle');
+  renderPuzzle();
+  const e=judgeEnd();
+  if(e)showResult(finishGame(e));
+  return true;
+}
+
+/* ブロック配置（スコア・コンボ・チャージ・消去・終了判定をここで一元処理） */
+function placePiece(idx,r,c){
+  if(!G||gameOver)return null;
+  const p=G.pieces[idx];
+  if(!p||p.used)return null;
+  const shape=SHAPE_MAP[p.sid];
+  if(!isInt(r)||!isInt(c)||!canPlaceAt(G.board,shape,r,c))return null;
+  const placed=[];
+  shape.cells.forEach(q=>{
+    G.board[r+q[0]][c+q[1]]=1;
+    placed.push([r+q[0],c+q[1]]);
+  });
+  p.used=true;
+  G.turn++;G.places++;
+  bumpMission('places',1);
+  let gained=shape.size*SCORE_CELL;
+  let chargeGain=CHARGE_PLACE_BASE+shape.size*CHARGE_PER_CELL;
+  const full=findFullLines(G.board);
+  const n=full.rows.length+full.cols.length;
+  const cleared=collectCells(full);
+  if(n>0){
+    cleared.forEach(q=>{G.board[q[0]][q[1]]=0;});
+    G.combo++;
+    gained+=lineScore(n)+comboBonus(G.combo);
+    chargeGain+=n*CHARGE_PER_LINE;
+    G.lines+=n;
+    bumpMission('lines',n);
+  }else{
+    G.combo=0;
+  }
+  addScore(gained);
+  addCharge(chargeGain);
+  refillIfNeeded();
+  const res={placed:placed,cleared:cleared,lines:n,gained:gained,combo:G.combo,end:null,summary:null};
+  res.end=judgeEnd();
+  if(res.end){
+    res.summary=finishGame(res.end);
+  }else{
+    saveGame();saveData();
+  }
+  return res;
+}
+/* ==== PART 6 END（次はPART 7：特殊能力の検証・発動・RESHUFFLEを直後に結合） ==== *//* ==================== PART 7: 特殊能力ロジック ==================== */
+/* 仕様メモ
+ * - 能力の使用はターンを消費しない（TURN・COMBOは変化しない）
+ * - BLOCK_BREAKER / FULL_CLEAR : ブロック除去のみ（スコア・チャージの加算なし。得点の稼ぎ過ぎを防ぐ）
+ * - LINE_SHOCK : 1ライン消去として扱い、ライン得点・チャージ+15・ミッション・ライン数に反映
+ * - 対象が不正な場合は何も変更せずキャンセル（チャージは消費しない）
+ * - 能力レベルの強化は必要チャージの軽減のみ（SKILLSのcost配列）
+ */
+function skillLevel(id){
+  return S.owned[id]?clamp(S.levels[id]||1,1,MAX_LEVEL):1;
+}
+function skillNeed(id){
+  return skillCost(id,skillLevel(id));
+}
+function isSkillReady(id){
+  return !!G&&!gameOver&&G.skills.indexOf(id)>=0&&G.charge>=skillNeed(id);
+}
+
+/* 対象指定 t から影響するマスを返す
+   BLOCK_BREAKER: {r,c} / LINE_SHOCK: {type:'row'|'col',i} / FULL_CLEAR: {r,c}=3×3の中心 */
+function inBoard(r,c){
+  return isInt(r)&&isInt(c)&&r>=0&&r<SIZE&&c>=0&&c<SIZE;
+}
+function skillCells(id,t){
+  const out=[];
+  if(!t||typeof t!=='object')return out;
+  if(id==='BLOCK_BREAKER'){
+    if(inBoard(t.r,t.c))out.push([t.r,t.c]);
+  }else if(id==='LINE_SHOCK'){
+    if(isInt(t.i)&&t.i>=0&&t.i<SIZE&&(t.type==='row'||t.type==='col')){
+      for(let k=0;k<SIZE;k++)out.push(t.type==='row'?[t.i,k]:[k,t.i]);
+    }
+  }else if(id==='FULL_CLEAR'){
+    if(inBoard(t.r,t.c)){
+      for(let y=t.r-1;y<=t.r+1;y++){
+        for(let x=t.c-1;x<=t.c+1;x++){
+          if(inBoard(y,x))out.push([y,x]);
+        }
+      }
+    }
+  }
+  return out;
+}
+/* 対象範囲内にブロックが1つ以上あれば有効 */
+function isSkillTargetValid(id,t){
+  if(!G)return false;
+  return skillCells(id,t).some(q=>G.board[q[0]][q[1]]===1);
+}
+
+/* 未配置ブロックをすべて交換（最低1個は置ける形になるよう抽選） */
+function reshufflePieces(){
+  const idxs=[];
+  G.pieces.forEach((p,i)=>{if(!p.used)idxs.push(i);});
+  if(!idxs.length)return false;
+  const rng=makeRng(G.seed,G.gen);
+  G.gen++;
+  let picked=null;
+  for(let k=0;k<40&&!picked;k++){
+    const set=idxs.map(()=>pickShape(rng,G.turn));
+    const total=set.reduce((a,s)=>a+s.size,0);
+    const big=set.filter(s=>s.size>=BIG_SIZE).length;
+    if(total>MAX_TOTAL_SIZE||big>MAX_BIG)continue;
+    if(set.some(s=>canPlaceAnywhere(G.board,s)))picked=set;
+  }
+  if(!picked){
+    const fit=SHAPES.filter(s=>s.size<=3&&canPlaceAnywhere(G.board,s));
+    const pool=fit.length?fit:SHAPES.filter(s=>s.size<=3);
+    picked=idxs.map(()=>pool[Math.floor(rng()*pool.length)]);
+  }
+  idxs.forEach((pi,k)=>{G.pieces[pi]={sid:picked[k].id,used:false};});
+  return true;
+}
+
+function skillFailMessage(reason){
+  if(reason==='charge')return 'チャージが足りません';
+  if(reason==='target')return '対象が不正です（チャージは消費されません）';
+  if(reason==='not-equipped')return 'この能力は編成されていません';
+  return '発動できません';
+}
+
+/* 能力の発動（検証→チャージ消費→効果→連動処理→終了判定） */
+function useSkill(id,target){
+  const fail=reason=>({ok:false,reason:reason});
+  if(!G||gameOver)return fail('no-game');
+  const sk=SKILL_MAP[id];
+  if(!sk||G.skills.indexOf(id)<0)return fail('not-equipped');
+  const need=skillNeed(id);
+  if(G.charge<need)return fail('charge');
+  let cells=[];
+  if(id==='RESHUFFLE'){
+    if(!G.pieces.some(p=>!p.used))return fail('target');
+  }else{
+    if(!isSkillTargetValid(id,target))return fail('target');
+    cells=skillCells(id,target).filter(q=>G.board[q[0]][q[1]]===1);
+  }
+  /* ここから先は必ず成功する：チャージ消費は検証後に1回だけ */
+  G.charge-=need;
+  const res={ok:true,id:id,cleared:cells,lines:0,gained:0,end:null,summary:null};
+  if(id==='RESHUFFLE'){
+    reshufflePieces();
+  }else{
+    cells.forEach(q=>{G.board[q[0]][q[1]]=0;});
+    if(id==='LINE_SHOCK'){
+      res.lines=1;
+      res.gained=lineScore(1);
+      G.lines+=1;
+      bumpMission('lines',1);
+      addScore(res.gained);
+      addCharge(CHARGE_PER_LINE);
+    }
+  }
+  res.end=judgeEnd();
+  if(res.end){
+    res.summary=finishGame(res.end);
+  }else{
+    saveGame();
+    saveData();
+  }
+  return res;
+}
+/* ==== PART 7 END（次はPART 8：ガチャ抽選・欠片・レベルアップ・コレクション・デッキ編成ロジックを直後に結合） ==== *//* ==================== PART 8: ガチャ・欠片・レベル・編成 ==================== */
+/* 排出率は RATES(N50/R32/SR15/SSR3) の累積で判定。rand は 0以上1未満の乱数（テスト時に差し替え可） */
+function rollRarity(rand){
+  const x=(typeof rand==='number'?rand:Math.random())*100;
+  let acc=0;
+  for(const e of RATES){
+    acc+=e.p;
+    if(x<acc)return e.r;
+  }
+  return RATES[RATES.length-1].r;
+}
+function pickSkillOfRarity(rarity,rand){
+  let pool=SKILLS.filter(s=>s.rarity===rarity);
+  if(!pool.length)pool=SKILLS;
+  const x=typeof rand==='number'?rand:Math.random();
+  return pool[Math.min(pool.length-1,Math.floor(x*pool.length))];
+}
+function canAffordGacha(count){
+  const cost=count===10?COST_10:COST_1;
+  return S.coin>=cost;
+}
+
+/* ガチャ実行：count は 1 または 10。コイン不足なら何も変更せず null を返す */
+function doGacha(count){
+  if(count!==1&&count!==10)return null;
+  const cost=count===10?COST_10:COST_1;
+  if(!isInt(S.coin)||S.coin<cost)return null;
+  S.coin-=cost;
+  const results=[];
+  for(let i=0;i<count;i++){
+    const rarity=rollRarity();
+    const sk=pickSkillOfRarity(rarity);
+    if(S.owned[sk.id]){
+      const add=SHARD_DUP[sk.rarity]||0;
+      S.shards[sk.id]=Math.min(99999,(S.shards[sk.id]||0)+add);
+      results.push({id:sk.id,rarity:sk.rarity,isNew:false,shards:add});
+    }else{
+      S.owned[sk.id]=true;
+      S.levels[sk.id]=1;
+      S.shards[sk.id]=0;
+      results.push({id:sk.id,rarity:sk.rarity,isNew:true,shards:0});
+    }
+  }
+  saveData();
+  return results;
+}
+/* 結果の中で最も高いレアリティ（演出用） */
+function topRarity(results){
+  let best=0;
+  results.forEach(r=>{best=Math.max(best,RARITIES.indexOf(r.rarity));});
+  return RARITIES[best];
+}
+
+/* レベルアップ（Lv1→2:20個 / Lv2→3:40個、最大Lv3） */
+function shardsNeeded(id){
+  const lv=skillLevel(id);
+  return lv>=MAX_LEVEL?0:LEVEL_NEED[lv];
+}
+function canLevelUp(id){
+  if(!S.owned[id])return false;
+  const lv=skillLevel(id);
+  if(lv>=MAX_LEVEL)return false;
+  return (S.shards[id]||0)>=LEVEL_NEED[lv];
+}
+function levelUp(id){
+  if(!canLevelUp(id))return false;
+  const lv=skillLevel(id);
+  S.shards[id]-=LEVEL_NEED[lv];
+  S.levels[id]=lv+1;
+  saveData();
+  return true;
+}
+/* 能力説明（レベル別の必要チャージ付き） */
+function skillDescText(id){
+  const sk=SKILL_MAP[id];
+  const lv=skillLevel(id);
+  return sk.desc+'（必要チャージ '+skillCost(id,lv)+'）';
+}
+function skillLevelsText(id){
+  const sk=SKILL_MAP[id];
+  return 'Lv1:'+sk.cost[0]+' / Lv2:'+sk.cost[1]+' / Lv3:'+sk.cost[2];
+}
+
+/* 編成（最大3、重複不可、保存あり） */
+function isEquipped(id){
+  return S.deck.indexOf(id)>=0;
+}
+function equipSkill(id){
+  if(!S.owned[id]||!SKILL_MAP[id])return 'invalid';
+  if(isEquipped(id))return 'dup';
+  if(S.deck.length>=MAX_DECK)return 'full';
+  S.deck.push(id);
+  saveData();
+  return 'ok';
+}
+function unequipSkill(id){
+  const i=S.deck.indexOf(id);
+  if(i<0)return false;
+  S.deck.splice(i,1);
+  saveData();
+  return true;
+}
+function ownedCount(){
+  return SKILLS.filter(s=>S.owned[s.id]).length;
+}
+/* ==== PART 8 END（次はPART 9：画面切替・トースト・モーダル・効果音・HOME/GACHA/COLLECTION/DECK/SETTINGS描画を直後に結合） ==== *//* ==================== PART 9: 共通UI・HOME・GACHA ==================== */
+let toastTimer=null;
+let audioCtx=null;
+let gachaBusy=false;
+
+function showToast(msg){
+  const t=$('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* 効果音（WebAudio。外部ファイル不要） */
+const SFX_SEQ={
+  place:[[440,.06]],
+  clear:[[523,.08],[659,.08],[784,.12]],
+  skill:[[392,.08],[587,.1]],
+  gacha:[[330,.08],[440,.08],[554,.1]],
+  rare:[[523,.1],[659,.1],[784,.1],[1047,.2]],
+  error:[[160,.15]]
+};
+function sfx(type){
+  if(!S||!S.settings.sound)return;
+  try{
+    if(!audioCtx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return;
+      audioCtx=new AC();
+    }
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    let t=audioCtx.currentTime;
+    (SFX_SEQ[type]||[]).forEach(n=>{
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.type='sine';o.frequency.value=n[0];
+      g.gain.setValueAtTime(.12,t);
+      g.gain.exponentialRampToValueAtTime(.001,t+n[1]);
+      o.connect(g);g.connect(audioCtx.destination);
+      o.start(t);o.stop(t+n[1]);
+      t+=n[1];
+    });
+  }catch(e){}
+}
+
+/* モーダル（bodyは内部生成のHTMLのみ渡す） */
+function showModal(title,body,btns){
+  $('modalTitle').textContent=title;
+  $('modalBody').innerHTML=body;
+  const box=$('modalBtns');
+  box.innerHTML='';
+  (btns&&btns.length?btns:[{label:'閉じる'}]).forEach(b=>{
+    const el=document.createElement('button');
+    el.className='btn'+(b.cls?' '+b.cls:'');
+    el.textContent=b.label;
+    el.addEventListener('click',()=>{closeModal();if(b.fn)b.fn();});
+    box.appendChild(el);
+  });
+  $('modal').classList.add('show');
+}
+function closeModal(){$('modal').classList.remove('show');}
+
+/* 画面切替 */
+function showScreen(name){
+  qsa('.screen').forEach(s=>s.classList.toggle('active',s.id===name));
+  if(name==='home')renderHome();
+  else if(name==='gacha')renderGacha();
+  else if(name==='collection')renderCollection();
+  else if(name==='deck')renderDeck();
+  else if(name==='settings')renderSettings();
+  const el=$(name);
+  if(el)el.scrollTop=0;
+}
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  ensureMission();
+  const saved=loadGame();
+  const today=todayKey();
+  $('homeCoin').textContent=fmt(S.coin);
+  $('homeBest').textContent=fmt(S.best);
+  qsa('#modeTabs .mode-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===S.mode));
+  let note='';
+  if((S.mode==='CHALLENGE'||S.mode==='DAILY')&&S.modeClaim[S.mode]===today){
+    note=' ※本日の報酬は受取済みです。';
+  }
+  $('modeDesc').textContent=MODES[S.mode].desc+note;
+  $('btnPlay').textContent=saved?'続きから再開（'+saved.mode+'）':'プレイ開始';
+  $('btnNewGame').hidden=!saved;
+  let h='<div style="font-weight:800;margin-bottom:4px">デイリーミッション</div>';
+  MISSIONS.forEach(m=>{
+    const done=S.mission.claimed[m.id];
+    const p=Math.min(S.mission.progress[m.id]||0,m.goal);
+    h+='<div class="row"><span>'+m.label+'</span>'+
+      (done?'<span class="done">達成 +'+m.coin+'</span>'
+           :'<span>'+fmt(p)+' / '+fmt(m.goal)+'（+'+m.coin+'）</span>')+'</div>';
+  });
+  $('missionBox').innerHTML=h;
+}
+function onPlay(){
+  if(loadGame()){
+    if(!resumeGame())startGame(S.mode);
+  }else{
+    startGame(S.mode);
+  }
+}
+function onNewGame(){
+  showModal('新規開始','中断中のゲームを破棄して、'+S.mode+'を新しく始めます。よろしいですか？',[
+    {label:'キャンセル'},
+    {label:'破棄して開始',cls:'danger',fn:()=>{clearGame();startGame(S.mode);}}
+  ]);
+}
+
+/* ---------- GACHA ---------- */
+function renderGacha(){
+  $('gachaCoin').textContent=fmt(S.coin);
+  let h='<div style="font-weight:800;margin-bottom:4px">排出確率</div>';
+  RATES.forEach(e=>{
+    const names=SKILLS.filter(s=>s.rarity===e.r).map(s=>s.name).join(' / ');
+    h+='<div class="rate"><span><span class="tag rar-'+e.r+'">'+e.r+'</span> <span class="sub">'+names+'</span></span><b>'+e.p+'%</b></div>';
+  });
+  h+='<div class="sub" style="margin-top:6px">重複した能力は欠片に変換されます（N:'+SHARD_DUP.N+' / R:'+SHARD_DUP.R+' / SR:'+SHARD_DUP.SR+' / SSR:'+SHARD_DUP.SSR+'）。</div>';
+  $('rateList').innerHTML=h;
+  $('btnGacha1').disabled=gachaBusy||!canAffordGacha(1);
+  $('btnGacha10').disabled=gachaBusy||!canAffordGacha(10);
+  $('gachaMsg').textContent=canAffordGacha(1)?'':'コインが足りません。ゲームをプレイして獲得しましょう。';
+  $('capsule').className='capsule';
+}
+function runGacha(count){
+  if(gachaBusy)return;
+  if(!canAffordGacha(count)){
+    showToast('コインが足りません');sfx('error');renderGacha();return;
+  }
+  const results=doGacha(count);
+  if(!results){showToast('ガチャを実行できません');sfx('error');return;}
+  gachaBusy=true;
+  renderGacha();
+  const top=topRarity(results);
+  const fx=$('fx');
+  fx.className='overlay show';
+  $('fxCapsule').className='capsule shake';
+  $('fxText').textContent='...';
+  sfx('gacha');
+  setTimeout(()=>{
+    $('fxCapsule').className='capsule burst';
+    fx.className='overlay show rar-'+top;
+    $('fxText').textContent=top==='SSR'?'SSR !!':(top==='SR'?'SR !':top);
+    sfx((top==='SSR'||top==='SR')?'rare':'gacha');
+  },1100);
+  setTimeout(()=>{
+    fx.className='overlay';
+    $('fxCapsule').className='capsule';
+    gachaBusy=false;
+    showGachaResult(results);
+    renderGacha();
+  },1900);
+}
+function showGachaResult(results){
+  let h='<div class="res-grid">';
+  results.forEach(r=>{
+    const sk=SKILL_MAP[r.id];
+    h+='<div class="res-item rar-'+r.rarity+(r.isNew?'':' dup')+'">'+
+      '<span class="tag rar-'+r.rarity+'">'+r.rarity+'</span>'+
+      '<b>'+sk.name+'</b>'+(r.isNew?'NEW!':'欠片 +'+r.shards)+'</div>';
+  });
+  h+='</div>';
+  if(SKILLS.some(s=>canLevelUp(s.id))){
+    h+='<div class="sub" style="margin-top:8px">レベルアップできる能力があります（COLLECTION）。</div>';
+  }
+  showModal('獲得結果',h,[{label:'OK',cls:'primary'}]);
+}
+
+/* HOME・GACHA・画面移動のイベント登録（初期化時に1回だけ呼ぶ） */
+function bindHomeGacha(){
+  qsa('[data-go]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.go)));
+  qsa('#modeTabs .mode-tab').forEach(b=>b.addEventListener('click',()=>{
+    S.mode=b.dataset.mode;
+    saveData();
+    renderHome();
+  }));
+  $('btnPlay').addEventListener('click',onPlay);
+  $('btnNewGame').addEventListener('click',onNewGame);
+  $('btnGacha1').addEventListener('click',()=>runGacha(1));
+  $('btnGacha10').addEventListener('click',()=>runGacha(10));
+}
+/* ==== PART 9 END（次はPART 10：COLLECTION・DECK・SETTINGSの描画とイベントを直後に結合） ==== *//* ==================== PART 10: COLLECTION・DECK・SETTINGS ==================== */
+function skillDetailHtml(id){
+  const sk=SKILL_MAP[id];
+  const owned=!!S.owned[id];
+  const lv=skillLevel(id);
+  let h='<div><span class="tag rar-'+sk.rarity+'">'+sk.rarity+'</span> <b>'+sk.name+'</b></div>';
+  h+='<div style="margin-top:6px">'+sk.desc+'</div>';
+  h+='<div class="sub" style="margin-top:6px">必要チャージ　'+skillLevelsText(id)+'</div>';
+  if(owned){
+    const need=shardsNeeded(id);
+    h+='<div class="sub">現在 Lv'+lv+(need?'　欠片 '+(S.shards[id]||0)+' / '+need:'　（MAX）')+'</div>';
+  }else{
+    h+='<div class="sub">未獲得（ガチャで入手できます）</div>';
+  }
+  return h;
+}
+function showSkillDetail(id){
+  if(!SKILL_MAP[id])return;
+  showModal(SKILL_MAP[id].name,skillDetailHtml(id),[{label:'閉じる'}]);
+}
+
+/* ---------- COLLECTION ---------- */
+function renderCollection(){
+  $('colCount').textContent=ownedCount()+'/'+SKILLS.length;
+  let h='';
+  SKILLS.forEach(sk=>{
+    const id=sk.id;
+    if(!S.owned[id]){
+      h+='<div class="skill-card locked rar-'+sk.rarity+'">'+
+        '<div class="head"><span>？？？（'+sk.name+'）</span><span class="tag rar-'+sk.rarity+'">'+sk.rarity+'</span></div>'+
+        '<div class="desc">未獲得。ガチャで入手できます。</div></div>';
+      return;
+    }
+    const lv=skillLevel(id);
+    const need=shardsNeeded(id);
+    const have=S.shards[id]||0;
+    h+='<div class="skill-card rar-'+sk.rarity+(isEquipped(id)?' equipped':'')+'">'+
+      '<div class="head"><span>'+sk.name+'</span><span class="tag rar-'+sk.rarity+'">'+sk.rarity+'</span></div>'+
+      '<div class="desc">'+sk.desc+'</div>'+
+      '<div class="meta"><span>Lv '+lv+' / '+MAX_LEVEL+(isEquipped(id)?'　編成中':'')+'</span>'+
+      '<span>'+(need?'欠片 '+have+' / '+need:'欠片 '+have+'（MAX）')+'</span></div>'+
+      '<div class="meta"><span>必要チャージ　'+skillLevelsText(id)+'</span></div>';
+    if(need){
+      h+='<button class="btn small primary" data-act="lv" data-id="'+id+'"'+(canLevelUp(id)?'':' disabled')+'>レベルアップ（欠片 '+need+'）</button>';
+    }
+    h+='</div>';
+  });
+  $('collectionList').innerHTML=h;
+}
+function onCollectionClick(e){
+  const b=e.target.closest('[data-act="lv"]');
+  if(!b)return;
+  const id=b.dataset.id;
+  if(levelUp(id)){
+    sfx('skill');
+    showToast(SKILL_MAP[id].name+' が Lv'+skillLevel(id)+' になりました');
+  }else{
+    showToast('欠片が足りません');
+  }
+  renderCollection();
+}
+
+/* ---------- DECK ---------- */
+function renderDeck(){
+  $('deckCount').textContent=S.deck.length+'/'+MAX_DECK;
+  let h='';
+  if(loadGame()){
+    h+='<div class="sub">※中断中のゲームには反映されません（次の新規ゲームから有効）。</div>';
+  }
+  for(let i=0;i<MAX_DECK;i++){
+    const id=S.deck[i];
+    if(id&&SKILL_MAP[id]){
+      const sk=SKILL_MAP[id];
+      h+='<div class="deck-slot filled"><span><span class="tag rar-'+sk.rarity+'">'+sk.rarity+'</span> <b>'+sk.name+'</b> Lv'+skillLevel(id)+'</span>'+
+        '<span class="btn-row" style="flex:none"><button class="btn small" data-act="info" data-id="'+id+'">詳細</button>'+
+        '<button class="btn small danger" data-act="off" data-id="'+id+'">解除</button></span></div>';
+    }else{
+      h+='<div class="deck-slot"><span class="sub">空きスロット '+(i+1)+'</span></div>';
+    }
+  }
+  $('deckSlots').innerHTML=h;
+  let l='';
+  SKILLS.filter(s=>S.owned[s.id]).forEach(sk=>{
+    const eq=isEquipped(sk.id);
+    l+='<div class="skill-card rar-'+sk.rarity+(eq?' equipped':'')+'">'+
+      '<div class="head"><span>'+sk.name+' Lv'+skillLevel(sk.id)+'</span><span class="tag rar-'+sk.rarity+'">'+sk.rarity+'</span></div>'+
+      '<div class="desc">'+skillDescText(sk.id)+'</div>'+
+      '<div class="btn-row"><button class="btn small" data-act="info" data-id="'+sk.id+'">詳細</button>'+
+      '<button class="btn small primary" data-act="on" data-id="'+sk.id+'"'+(eq?' disabled':'')+'>'+(eq?'編成中':'編成する')+'</button></div></div>';
+  });
+  if(!l)l='<div class="sub">所有している能力がありません。ガチャで入手しましょう。</div>';
+  $('deckList').innerHTML=l;
+}
+function onDeckClick(e){
+  const b=e.target.closest('[data-act]');
+  if(!b)return;
+  const id=b.dataset.id,act=b.dataset.act;
+  if(act==='info'){showSkillDetail(id);return;}
+  if(act==='off'){
+    unequipSkill(id);
+  }else if(act==='on'){
+    const r=equipSkill(id);
+    if(r==='full')showToast('編成は最大'+MAX_DECK+'種類までです');
+    else if(r==='dup')showToast('すでに編成されています');
+    else if(r!=='ok')showToast('編成できません');
+  }
+  renderDeck();
+}
+
+/* ---------- SETTINGS ---------- */
+const RULES_HTML=
+  '<ul style="padding-left:18px;margin:0">'+
+  '<li>9×9の盤面にブロックを配置し、縦・横9マスが埋まるとラインを消去します。複数ラインは同時に消去されます。</li>'+
+  '<li>3つのブロックを使い切ると新しい3つが補充されます。どれも置けなくなるとゲームオーバーです。</li>'+
+  '<li>得点：1マス10点／1ライン100点／2ライン250点／3ライン450点／4ライン以上は1本ごとに+250点。連続消去でコンボ加点。</li>'+
+  '<li>チャージ：配置ごとに「5＋マス数×2」、ライン1本ごとに+15（最大100）。</li>'+
+  '<li>能力は最大3種類を編成でき、ゲーム開始後は変更できません。使用してもターンは進みません。対象が不正なときはチャージを消費しません。</li>'+
+  '<li>CHALLENGE：20ターン以内に2,500点。DAILY：毎日固定の条件で2,000点。報酬は各1日1回です。</li>'+
+  '<li>スコア報酬（1,000／5,000／10,000点）は初回達成のみ。通常プレイでもコインを獲得できます。</li>'+
+  '</ul>';
+function renderSettings(){
+  $('btnSound').textContent=S.settings.sound?'ON':'OFF';
+  $('saveStatus').textContent=storageLabel();
+}
+function onReset(){
+  showModal('データリセット','コイン・能力・欠片・編成・最高スコア・ミッション・中断データをすべて削除し、初期状態に戻します。この操作は取り消せません。よろしいですか？',[
+    {label:'キャンセル'},
+    {label:'リセットする',cls:'danger',fn:()=>{
+      resetAllData();
+      storageState='ok';
+      showToast('データをリセットしました');
+      showScreen('home');
+    }}
+  ]);
+}
+function bindMenus(){
+  $('collectionList').addEventListener('click',onCollectionClick);
+  $('deckSlots').addEventListener('click',onDeckClick);
+  $('deckList').addEventListener('click',onDeckClick);
+  $('btnSound').addEventListener('click',()=>{
+    S.settings.sound=!S.settings.sound;
+    saveData();
+    renderSettings();
+    sfx('place');
+  });
+  $('btnRules').addEventListener('click',()=>showModal('ゲームルール',RULES_HTML,[{label:'閉じる'}]));
+  $('btnReset').addEventListener('click',onReset);
+}
+/* ==== PART 10 END（次はPART 11：パズル画面の描画、ブロック選択、タップ・ドラッグ配置を直後に結合） ==== *//* ==================== PART 11: パズル画面の描画・入力 ==================== */
+/* 操作：①ブロックをタップで選択→盤面をタップでプレビュー→同じ場所をもう一度タップで確定
+         ②ブロックをドラッグして離した位置に配置（指の上に表示され、置けない位置は赤） */
+const LIFT=70;
+const ui={sel:-1,anchor:null,mark:new Map(),anim:null,skill:null,busy:false,
+          drag:null,lastScore:0,cells:[]};
+
+function resetUiState(){
+  ui.sel=-1;ui.anchor=null;ui.mark=new Map();ui.anim=null;
+  ui.skill=null;ui.busy=false;ui.drag=null;
+  ui.lastScore=G?G.score:0;
+  $('ghost').style.display='none';
+}
+function popEl(id){
+  const e=$(id);
+  e.classList.remove('pop');
+  void e.offsetWidth;
+  e.classList.add('pop');
+}
+function buildBoard(){
+  const b=$('board');
+  b.innerHTML='';
+  ui.cells=[];
+  for(let i=0;i<SIZE*SIZE;i++){
+    const d=document.createElement('div');
+    d.className='cell';
+    b.appendChild(d);
+    ui.cells.push(d);
+  }
+}
+function boardMetrics(){
+  const rect=$('board').getBoundingClientRect();
+  return {rect:rect,ox:rect.left+2,oy:rect.top+2,pitch:(rect.width-2)/SIZE};
+}
+function cellFromPoint(x,y){
+  const m=boardMetrics(),rc=m.rect;
+  if(x<rc.left||x>rc.right||y<rc.top||y>rc.bottom)return null;
+  return {r:clamp(Math.floor((y-m.oy)/m.pitch),0,SIZE-1),
+          c:clamp(Math.floor((x-m.ox)/m.pitch),0,SIZE-1)};
+}
+
+/* 盤面描画：状態(G.board)＋一時表示(ui.mark / ui.anim)から毎回クラスを決める */
+function renderBoard(){
+  if(!G)return;
+  if(!ui.cells.length)buildBoard();
+  let area=null;
+  const sp=(ui.sel>=0&&!ui.skill)?G.pieces[ui.sel]:null;
+  if(sp&&!sp.used){
+    const sh=SHAPE_MAP[sp.sid];
+    area=new Set();
+    for(let r=0;r<=SIZE-sh.h;r++){
+      for(let c=0;c<=SIZE-sh.w;c++){
+        if(canPlaceAt(G.board,sh,r,c))sh.cells.forEach(q=>area.add((r+q[0])*SIZE+c+q[1]));
+      }
+    }
+  }
+  for(let i=0;i<SIZE*SIZE;i++){
+    const r=Math.floor(i/SIZE),c=i%SIZE;
+    let cls='cell';
+    if((Math.floor(r/3)+Math.floor(c/3))%2===1)cls+=' alt';
+    if(ui.anim&&ui.anim.has(i))cls+=' filled clearing';
+    else{
+      if(G.board[r][c])cls+=' filled';
+      const m=ui.mark.get(i);
+      if(m)cls+=' '+m;
+      else if(area&&area.has(i)&&!G.board[r][c])cls+=' hint';
+    }
+    if(ui.cells[i].className!==cls)ui.cells[i].className=cls;
+  }
+}
+function makeMini(sh,s){
+  const g=document.createElement('div');
+  g.className='mini';
+  g.style.setProperty('--s',s+'px');
+  g.style.gridTemplateColumns='repeat('+sh.w+','+s+'px)';
+  const on=new Set(sh.cells.map(q=>q[0]*sh.w+q[1]));
+  for(let k=0;k<sh.w*sh.h;k++){
+    const i=document.createElement('i');
+    if(on.has(k))i.className='on';
+    g.appendChild(i);
+  }
+  return g;
+}
+function renderTray(){
+  const tray=$('tray');
+  tray.innerHTML='';
+  G.pieces.forEach((p,i)=>{
+    const sh=SHAPE_MAP[p.sid];
+    const slot=document.createElement('div');
+    slot.className='slot'+(p.used?' used':'')+(ui.sel===i?' selected':'');
+    slot.dataset.i=i;
+    slot.appendChild(makeMini(sh,Math.min(16,Math.floor(70/Math.max(sh.w,sh.h)))));
+    tray.appendChild(slot);
+  });
+}
+function setSelClass(){
+  qsa('#tray .slot').forEach(s=>s.classList.toggle('selected',+s.dataset.i===ui.sel));
+}
+function renderPuzzle(){
+  if(!G)return;
+  const def=MODES[G.mode];
+  $('modeLabel').textContent=G.mode;
+  $('goalLabel').textContent=G.mode==='CHALLENGE'
+    ?'目標'+fmt(def.target)+'点 / 残り'+Math.max(0,def.turns-G.turn)+'ターン'
+    :(G.mode==='DAILY'?'目標'+fmt(def.target)+'点':'制限なし');
+  $('hudScore').textContent=fmt(G.score);
+  $('hudBest').textContent=fmt(Math.max(S.best,G.score));
+  $('hudCombo').textContent=G.combo;
+  $('hudTurn').textContent=G.mode==='CHALLENGE'?G.turn+'/'+def.turns:G.turn;
+  $('chargeFill').style.width=G.charge+'%';
+  $('chargeText').textContent=G.charge+'/'+MAX_CHARGE;
+  if(G.score!==ui.lastScore){popEl('hudScore');ui.lastScore=G.score;}
+  renderBoard();
+  renderTray();
+  renderSkillBar();
+}
+
+/* プレビュー：置ける=青、置けない=赤、消えるライン=濃い青 */
+function setPreview(idx,ar,ac){
+  ui.mark=new Map();
+  const sh=SHAPE_MAP[G.pieces[idx].sid];
+  const ok=canPlaceAt(G.board,sh,ar,ac);
+  sh.cells.forEach(q=>{
+    const y=ar+q[0],x=ac+q[1];
+    if(inBoard(y,x))ui.mark.set(y*SIZE+x,ok?'pv-ok':'pv-bad');
+  });
+  if(ok){
+    const tb=G.board.map(row=>row.slice());
+    sh.cells.forEach(q=>{tb[ar+q[0]][ac+q[1]]=1;});
+    collectCells(findFullLines(tb)).forEach(q=>ui.mark.set(q[0]*SIZE+q[1],'pv-clear'));
+  }
+  renderBoard();
+  return ok;
+}
+/* 消去アニメーション（ブロック配置・能力で共通）。終了までは入力を受け付けない */
+function animateClear(cells,cb){
+  ui.busy=true;
+  ui.anim=new Set(cells.map(q=>q[0]*SIZE+q[1]));
+  renderBoard();
+  setTimeout(()=>{
+    ui.anim=null;ui.busy=false;
+    renderBoard();
+    if(cb)cb();
+  },380);
+}
+function afterAction(res){
+  if(res&&res.end&&res.summary)showResult(res.summary);
+}
+
+/* 配置の実行 */
+function doPlace(idx,r,c){
+  if(ui.busy||!G||gameOver)return;
+  const res=placePiece(idx,r,c);
+  if(!res){sfx('error');showToast('そこには置けません');return;}
+  ui.sel=-1;ui.anchor=null;ui.mark=new Map();
+  sfx(res.lines>0?'clear':'place');
+  if(res.lines>0){
+    let msg=res.lines+'LINE  +'+res.gained;
+    if(res.combo>=2)msg='COMBO x'+res.combo+'  '+msg;
+    showToast(msg);
+    animateClear(res.cleared,()=>afterAction(res));
+    renderPuzzle();
+    popEl('hudCombo');
+  }else{
+    renderPuzzle();
+    afterAction(res);
+  }
+}
+
+/* タップ操作（2回タップで確定） */
+function onBoardClick(e){
+  if(!G||gameOver||ui.busy||ui.drag)return;
+  const cp=cellFromPoint(e.clientX,e.clientY);
+  if(!cp)return;
+  if(ui.skill){skillBoardTap(cp.r,cp.c);return;}
+  if(ui.sel<0||!G.pieces[ui.sel]||G.pieces[ui.sel].used){
+    showToast('先にブロックを選んでください');return;
+  }
+  const sh=SHAPE_MAP[G.pieces[ui.sel].sid];
+  const ar=clamp(cp.r-Math.floor((sh.h-1)/2),0,SIZE-sh.h);
+  const ac=clamp(cp.c-Math.floor((sh.w-1)/2),0,SIZE-sh.w);
+  if(ui.anchor&&ui.anchor.r===ar&&ui.anchor.c===ac){
+    if(canPlaceAt(G.board,sh,ar,ac))doPlace(ui.sel,ar,ac);
+    else{sfx('error');showToast('そこには置けません');}
+    return;
+  }
+  ui.anchor={r:ar,c:ac};
+  setPreview(ui.sel,ar,ac);
+}
+
+/* ドラッグ操作 */
+function onTrayDown(e){
+  if(!G||gameOver||ui.busy)return;
+  const slot=e.target.closest('.slot');
+  if(!slot)return;
+  const idx=+slot.dataset.i;
+  if(!G.pieces[idx]||G.pieces[idx].used)return;
+  if(ui.skill)cancelSkill();
+  ui.drag={idx:idx,sx:e.clientX,sy:e.clientY,moved:false,pid:e.pointerId,ar:NaN,ac:NaN};
+}
+function showGhost(idx){
+  const m=boardMetrics(),g=$('ghost');
+  g.innerHTML='';
+  g.appendChild(makeMini(SHAPE_MAP[G.pieces[idx].sid],m.pitch-2));
+  g.style.display='block';
+}
+function updateDrag(x,y){
+  const d=ui.drag,sh=SHAPE_MAP[G.pieces[d.idx].sid],m=boardMetrics();
+  const tx=x,ty=y-LIFT;
+  const gw=sh.w*m.pitch-2,gh=sh.h*m.pitch-2,g=$('ghost');
+  g.style.left=(tx-gw/2)+'px';
+  g.style.top=(ty-gh/2)+'px';
+  d.ar=Math.round((ty-m.oy)/m.pitch-sh.h/2);
+  d.ac=Math.round((tx-m.ox)/m.pitch-sh.w/2);
+  setPreview(d.idx,d.ar,d.ac);
+}
+function onDragMove(e){
+  const d=ui.drag;
+  if(!d||e.pointerId!==d.pid)return;
+  if(!d.moved){
+    if(Math.hypot(e.clientX-d.sx,e.clientY-d.sy)<8)return;
+    d.moved=true;ui.sel=d.idx;ui.anchor=null;
+    setSelClass();
+    showGhost(d.idx);
+  }
+  updateDrag(e.clientX,e.clientY);
+}
+function onDragEnd(e){
+  const d=ui.drag;
+  if(!d||e.pointerId!==d.pid)return;
+  ui.drag=null;
+  $('ghost').style.display='none';
+  if(!d.moved){
+    ui.sel=(ui.sel===d.idx)?-1:d.idx;
+    ui.anchor=null;ui.mark=new Map();
+    setSelClass();renderBoard();
+    return;
+  }
+  ui.mark=new Map();
+  const ok=e.type!=='pointercancel'&&isInt(d.ar)&&isInt(d.ac)&&
+    canPlaceAt(G.board,SHAPE_MAP[G.pieces[d.idx].sid],d.ar,d.ac);
+  if(ok)doPlace(d.idx,d.ar,d.ac);
+  else{
+    renderBoard();
+    if(e.type!=='pointercancel')sfx('error');
+  }
+}
+function bindPuzzleInput(){
+  $('tray').addEventListener('pointerdown',onTrayDown);
+  document.addEventListener('pointermove',onDragMove);
+  document.addEventListener('pointerup',onDragEnd);
+  document.addEventListener('pointercancel',onDragEnd);
+  $('board').addEventListener('click',onBoardClick);
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+}
+/* ==== PART 11 END（次はPART 12：能力発動UI・一時停止/終了・結果画面・初期化・閉じタグ。最終PART） ==== *//* ==================== PART 12: 能力発動UI・結果・初期化 ==================== */
+function renderSkillBar(){
+  const bar=$('skillBar');
+  bar.innerHTML='';
+  for(let i=0;i<MAX_DECK;i++){
+    const id=G.skills[i];
+    const b=document.createElement('button');
+    if(!id||!SKILL_MAP[id]){
+      b.className='skill-btn empty';
+      b.innerHTML='—<small>未編成</small>';
+    }else{
+      const need=skillNeed(id);
+      const ready=G.charge>=need;
+      const active=!!(ui.skill&&ui.skill.id===id);
+      b.className='skill-btn'+(ready?' ready':'')+(active?' active':'');
+      b.dataset.id=id;
+      b.innerHTML=SKILL_MAP[id].name+'<small>Lv'+skillLevel(id)+'　'+Math.min(G.charge,need)+'/'+need+'</small>';
+      if(!ready&&!active)b.style.opacity='.6';
+    }
+    bar.appendChild(b);
+  }
+}
+function cancelSkill(){
+  ui.skill=null;
+  ui.mark=new Map();
+  if(G){renderBoard();renderSkillBar();}
+}
+function execSkill(id,t){
+  const res=useSkill(id,t);
+  if(!res.ok){
+    sfx('error');
+    showToast(skillFailMessage(res.reason));
+    cancelSkill();
+    return;
+  }
+  ui.skill=null;
+  ui.mark=new Map();
+  sfx('skill');
+  if(res.lines>0)showToast('LINE SHOCK  +'+res.gained);
+  if(res.cleared&&res.cleared.length){
+    animateClear(res.cleared,()=>afterAction(res));
+    renderPuzzle();
+  }else{
+    renderPuzzle();
+    afterAction(res);
+  }
+}
+function skillBoardTap(r,c){
+  const id=ui.skill.id;
+  if(id==='LINE_SHOCK'){
+    showModal('LINE SHOCK','消去する範囲を選んでください。',[
+      {label:'第'+(r+1)+'行',cls:'primary',fn:()=>execSkill(id,{type:'row',i:r})},
+      {label:'第'+(c+1)+'列',cls:'primary',fn:()=>execSkill(id,{type:'col',i:c})},
+      {label:'キャンセル',fn:cancelSkill}
+    ]);
+    return;
+  }
+  const t={r:r,c:c};
+  if(!isSkillTargetValid(id,t)){
+    sfx('error');
+    showToast(skillFailMessage('target'));
+    cancelSkill();
+    return;
+  }
+  const key=r+','+c;
+  if(ui.skill.key===key){execSkill(id,t);return;}
+  ui.skill.key=key;
+  ui.mark=new Map();
+  skillCells(id,t).forEach(q=>ui.mark.set(q[0]*SIZE+q[1],'tgt'));
+  renderBoard();
+  showToast('もう一度タップで発動（別のマスで選び直し可）');
+}
+function onSkillClick(e){
+  const b=e.target.closest('.skill-btn');
+  if(!b||!G||gameOver||ui.busy)return;
+  const id=b.dataset.id;
+  if(!id){showToast('能力が未編成です（HOMEのデッキで編成）');return;}
+  if(ui.skill&&ui.skill.id===id){cancelSkill();return;}
+  const need=skillNeed(id);
+  if(G.charge<need){
+    sfx('error');
+    showToast('チャージが足りません（'+G.charge+'/'+need+'）');
+    return;
+  }
+  ui.sel=-1;ui.anchor=null;ui.mark=new Map();
+  if(id==='RESHUFFLE'){
+    ui.skill=null;
+    renderPuzzle();
+    showModal('RESHUFFLE','未配置のブロックをすべて交換します。',[
+      {label:'キャンセル'},
+      {label:'交換する',cls:'primary',fn:()=>execSkill(id,null)}
+    ]);
+    return;
+  }
+  ui.skill={id:id,key:''};
+  const hint={BLOCK_BREAKER:'消したいブロックをタップ',FULL_CLEAR:'3×3範囲の中心をタップ',LINE_SHOCK:'消したい行・列のマスをタップ'};
+  showToast(hint[id]||'対象を選択');
+  renderPuzzle();
+}
+
+/* 一時停止・終了・結果画面 */
+function onPause(){
+  if(!G||gameOver||ui.busy)return;
+  cancelSkill();
+  showModal('PAUSE','ゲームを一時停止しました。',[
+    {label:'再開',cls:'primary'},
+    {label:'HOMEへ（保存）',fn:()=>{saveGame();saveData();G=null;showScreen('home');}}
+  ]);
+}
+function onQuit(){
+  if(!G||gameOver||ui.busy)return;
+  cancelSkill();
+  showModal('ゲーム終了','ここでゲームを終了します。現在のスコアで報酬が計算されます。',[
+    {label:'キャンセル'},
+    {label:'終了する',cls:'danger',fn:()=>showResult(quitGame())}
+  ]);
+}
+function showResult(sum){
+  if(!sum)return;
+  const titles={clear:'CLEAR!',fail:'TIME UP',over:'GAME OVER',quit:'FINISH'};
+  let h='<div style="font-size:30px;font-weight:900;text-align:center">'+fmt(sum.score)+'</div>';
+  h+='<div class="sub" style="text-align:center">'+sum.mode+(sum.newBest?'　NEW BEST!':'')+'</div>';
+  h+='<div style="margin-top:8px">ターン '+sum.turn+' / 消去ライン '+sum.lines+'</div>';
+  h+='<div>プレイ報酬 +'+sum.playCoin+'コイン</div>';
+  sum.firstRewards.forEach(r=>{
+    h+='<div>'+fmt(r.score)+'点 初回達成 +'+r.coin+'コイン</div>';
+  });
+  if(sum.modeReward>0)h+='<div>'+sum.mode+'報酬 +'+sum.modeReward+'コイン</div>';
+  sfx(sum.result==='clear'?'rare':'gacha');
+  showModal(titles[sum.result]||'RESULT',h,[
+    {label:'HOMEへ',fn:()=>{G=null;showScreen('home');}},
+    {label:'もう一度',cls:'primary',fn:()=>startGame(sum.mode)}
+  ]);
+}
+function bindPuzzleButtons(){
+  $('btnPause').addEventListener('click',onPause);
+  $('btnQuit').addEventListener('click',onQuit);
+  $('skillBar').addEventListener('click',onSkillClick);
+}
+
+/* 初期化 */
+function init(){
+  loadSave();
+  ensureMission();
+  saveData();
+  bindHomeGacha();
+  bindMenus();
+  bindPuzzleInput();
+  bindPuzzleButtons();
+  showScreen('home');
+  const keep=()=>{if(G&&!gameOver)saveGame();saveData();};
+  window.addEventListener('pagehide',keep);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)keep();
+    else if($('home').classList.contains('active'))renderHome();
+  });
+}
+init();
+/* ==== PART 12 END ==== */
+</script>
+</body>
+</html>
